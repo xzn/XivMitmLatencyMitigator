@@ -339,8 +339,8 @@ int main() {
 	std::vector<const char*> calls;
 	for (auto sig1 = lookup_in_text(
 		&virt[0],
-		"\x83\x7e\x00\x00\x75\x00\x6a\x13\xe8\x00\x00\x00\x00\x6a\x00\x6a\x00\x50\xe8",
-		"\xff\xff\x00\x00\xff\x00\xff\xff\xff\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff",
+		"\x83\x7e\x00\x00\x75\x00\x6a\x00\xe8\x00\x00\x00\x00\x6a\x00\x6a\x00\x50\xe8",
+		"\xff\xff\x00\x00\xff\x00\xff\x00\xff\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff",
 		19), sig2 = sig1 + 1024; calls.size() < 6 && sig1 < sig2; sig1++) {
 		if (*sig1 != (char)0xe8)
 			continue;
@@ -349,14 +349,22 @@ int main() {
 			continue;
 		calls.push_back(pTargetAddress);
 	}
-	if (calls.size() < 6) {
+	if (calls.size() < 3) {
 		std::cerr << "Could not find signature" << std::endl;
 		return -1;
 	}
 	const auto pfnOodleNetwork1_Shared_Size = (OodleNetwork1_Shared_Size*)calls[0];
 	const auto pfnOodleNetwork1_Shared_SetWindow = (OodleNetwork1_Shared_SetWindow*)calls[2];
-	const auto pfnOodleNetwork1UDP_State_Size= (OodleNetwork1UDP_State_Size*)calls[3];
-	const auto pfnOodleNetwork1UDP_Train = (OodleNetwork1UDP_Train*)calls[5];
+	const auto pfnOodleNetwork1UDP_State_Size= (OodleNetwork1UDP_State_Size*)(lookup_in_text(
+		&virt[0],
+		"\xcc\xb8\x00\xb4\x2e\x00\xc3",
+		"\xff\xff\xff\xff\xff\xff",
+		6) + 1);
+	const auto pfnOodleNetwork1UDP_Train = (OodleNetwork1UDP_Train*)lookup_in_text(
+		&virt[0],
+		"\x56\x6a\x08\x68\x00\x84\x4a\x00",
+		"\xff\xff\xff\xff\xff\xff\xff\xff",
+		8);
 
 	const auto pfnOodleNetwork1UDP_Decode = (OodleNetwork1UDP_Decode*)lookup_in_text(
 		&virt[0],
@@ -364,19 +372,18 @@ int main() {
 		"\xff\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff\xff\xff\xff\xff\xff\x00\xff\xff",
 		19);
 
-	const auto cpfnOodleNetwork1UDP_Encode = lookup_in_text(
+	const auto pfnOodleNetwork1UDP_Encode = (OodleNetwork1UDP_Encode*)lookup_in_text(
 		&virt[0],
-		"\x57\xff\x15\x00\x00\x00\x00\xff\x75\x08\x56\xff\x75\x10\xff\x77\x1c\xff\x77\x18\xe8",
-		"\xff\xff\xff\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff",
-		21) + 20;
-	const auto pfnOodleNetwork1UDP_Encode = (OodleNetwork1UDP_Encode*)(cpfnOodleNetwork1UDP_Encode + 5 + *(int*)(cpfnOodleNetwork1UDP_Encode + 1));
+		"\xff\x74\x24\x14\x8b\x4c\x24\x08\xff\x74\x24\x14\xff\x74\x24\x14\xff\x74\x24\x14\xe8\x00\x00\x00\x00\xc2\x14\x00\xcc\xcc\xcc\xcc\xb8",
+		"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff",
+		33);
 
 	int htbits = 19;
-	pfnOodleSetMallocFree(&my_malloc, &my_free);
 	std::vector<uint8_t> state(pfnOodleNetwork1UDP_State_Size());
 	std::vector<uint8_t> shared(pfnOodleNetwork1_Shared_Size(htbits));
 	std::vector<uint8_t> window(0x8000);
 
+	pfnOodleSetMallocFree(&my_malloc, &my_free);
 	pfnOodleNetwork1_Shared_SetWindow(&shared[0], htbits, &window[0], static_cast<int>(window.size()));
 	pfnOodleNetwork1UDP_Train(&state[0], &shared[0], nullptr, nullptr, 0);
 
