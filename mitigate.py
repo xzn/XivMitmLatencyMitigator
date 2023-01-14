@@ -827,7 +827,7 @@ class OodleHelper:
             raise RuntimeError("Need ffxiv.exe in the same directory. "
                                "Copy one from your local Windows/Mac installation.")
 
-        cls.oodle_helper_path = os.path.dirname(__file__) + "/oodle_helper"
+        cls.oodle_helper_path = os.path.join(os.getcwd(), "oodle_helper")
         with open(cls.oodle_helper_path + ".cpp", "w") as fp:
             fp.write(OODLE_HELPER_CODE)
         if platform.machine() not in ('i386', 'x86_64'):
@@ -1589,7 +1589,7 @@ def __main__() -> int:
     applied_rules = []
     err = False
     is_child = False
-    cleanup_filename = os.path.basename(__file__) + ".cleanup.sh"
+    cleanup_filename = os.path.join(os.getcwd(), ".cleanup.sh")
     if os.path.exists(cleanup_filename):
         os.system(cleanup_filename)
     try:
